@@ -3,13 +3,16 @@ from SoapySDR import SOAPY_SDR_TX, SOAPY_SDR_CF32
 import numpy as np
 import threading
 import queue
+import math
+import json
+import uuid 
 
 # --- CONFIGURATION ---
 TX_SERIAL = "0000000000000000f77c60dc29417dc3"
 FREQ = 1.2e9
 SAMP_RATE = int(2e6)
 SAMPLES_PER_SYMBOL = 100 
-
+CHUNK_SIZE = 512  
 # The decoupled queue used to receive data from the API
 _tx_queue = queue.Queue()
 
@@ -92,5 +95,46 @@ def start_transmitter():
     thread.start()
 
 def enqueue_payload(payload: str):
-    """Allows the web backend to safely drop data into the transmission queue."""
-    _tx_queue.put(payload)
+    try:
+        final_payload = json.loads(payload)
+    except json.JSONDecodeError:
+        print("[ERROR] Failed to parse payload JSON before enqueueing.")
+        return
+
+    if final_payload.get("type") == "file":
+        filename = final_payload.get("filename", "unknown_file")
+        base64_data = final_payload.get("payload", "")
+        
+        total_length = len(base64_data)
+        total_chunks = math.ceil(total_length / CHUNK_SIZE)
+        
+        if total_chunks == 0:
+            total_chunks = 1
+            
+        print(f"[API] Splitting file '{filename}' into {total_chunks} chunks...")
+        
+        # ---> Produce a unique Block ID for reassembly <---
+        block_id = uuid.uuid4().hex
+        
+        for i in range(total_chunks):
+            start_idx = i * CHUNK_SIZE
+            end_idx = start_idx + CHUNK_SIZE
+            chunk_data = base64_data[start_idx:end_idx]
+            
+            # Update dictionary with block_id
+            chunk_packet = {
+                "type": "file_chunk",
+                "block_id": block_id,
+                "filename": filename,
+                "chunk_id": i,
+                "total_chunks": total_chunks,
+                "payload": chunk_data
+            }
+            
+            chunk_json_string = json.dumps(chunk_packet)
+            _tx_queue.put(chunk_json_string)
+            
+        print(f"[API] Successfully enqueued {total_chunks} chunks for '{filename}'.")
+            
+    else:
+        _tx_queue.put(payload)
