@@ -2,7 +2,9 @@ import SoapySDR
 from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_CF32
 import numpy as np
 import sys
-
+import base64
+import json
+import os
 # --- CONFIGURATION ---
 RX_SERIAL = "000000000000000075b068dc30792007"
 FREQ = 1.2e9           
@@ -10,6 +12,70 @@ SAMP_RATE = int(2e6)
 SAMPLES_PER_SYMBOL = 100
 CAPTURE_SECONDS = 1.5  
 
+
+
+# --- 1. Define the Handler Functions ---
+
+def handle_jpg(data):
+    filename = data.get('filename', 'received_image') + 'mina.jpg'
+    payload = data.get('payload', '')
+    
+    try:
+        # Decode the Base64 string back into binary bytes
+        img_bytes = base64.b64decode(payload)
+        with open(filename, 'wb') as f:
+            f.write(img_bytes)
+        print(f"[SUCCESS] JPG image saved as: {filename}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save JPG: {e}")
+
+def handle_png(data):
+    filename = data.get('filename', 'received_image.png')
+    payload = data.get('payload', '')
+    
+    try:
+        img_bytes = base64.b64decode(payload)
+        with open(filename, 'wb') as f:
+            f.write(img_bytes)
+        print(f"[SUCCESS] PNG image saved as: {filename}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save PNG: {e}")
+
+# --- 2. Create the Extensions Dictionary ---
+
+# This maps the file extension string to the function name
+extensions = {
+    'jpg': handle_jpg,
+    'jpeg': handle_jpg, # Map both to the same function
+    'png': handle_png
+}
+
+def process_json(extracted):
+    print(extracted)
+    try:
+        data_dict = json.loads(extracted)
+        kind = data_dict.get('type')
+        if kind == 'file':
+            filename = data_dict.get('filename', '')
+            print(f"filename:{filename}")
+            if filename and '.' in filename:
+                # Get the extension and convert to lowercase (e.g., "JPG" -> "jpg")
+                ext = filename.split('.')[-1].lower()
+                
+                # Check if we have a function to handle this specific extension
+                if ext in extensions:
+                    # Execute the function passing the whole data_dict
+                    extensions[ext](data_dict)
+                else:
+                    print(f"[WARNING] No handler found for extension: .{ext}")
+            else:
+                print("[ERROR] File received but filename is missing or invalid.")
+                
+        elif kind == 'text':
+            print(f"MESSAGE: {data_dict.get('payload')}")
+
+    except json.JSONDecodeError:
+        print("[ERROR] Failed to parse JSON. Radio interference likely corrupted the packet.")
 def process_burst(iq_data):
     # 1. Packet Detection (Find the burst using Amplitude Envelope)
     mag = np.abs(iq_data)
@@ -129,14 +195,9 @@ def main():
                     samples_read += read_len
 
             result = process_burst(buffer)
-            
+            print(result + "\n")
             if result:
-                print("=" * 40)
-                print(f"MESSAGE RECEIVED: {result}")
-                print("=" * 40)
-                
-                with open("output.txt", "a") as f:
-                    f.write(result + "\n")
+                process_json(result)
                     
     except KeyboardInterrupt:
         print("\n[INFO] User interrupted. Stopping receiver...")
