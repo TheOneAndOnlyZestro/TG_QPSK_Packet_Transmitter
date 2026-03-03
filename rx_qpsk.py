@@ -114,6 +114,7 @@ def process_burst(iq_data):
     smoothed = np.convolve(mag, np.ones(window_size)/window_size, mode='same')
     
     max_val = np.max(smoothed)
+    print(f"MAX VAL: {max_val}")
     if max_val < 0.1:  # Absolute noise floor threshold
         return None
 
@@ -210,7 +211,7 @@ def process_burst(iq_data):
 def main():
     print(f"[INFO] Opening HackRF One RX: {RX_SERIAL}...")
     try:
-        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, 60,40)
+        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, 70,70)
     except Exception as e:
         print(f"Failed to connect: {e}")
         sys.exit(1)

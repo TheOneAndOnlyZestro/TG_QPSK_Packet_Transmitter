@@ -15,10 +15,12 @@ class DeviceControl:
         self.sdr.setSampleRate(SOAPY_SDR_TX, 0, self.sample_rate)
         self.sdr.setFrequency(SOAPY_SDR_TX, 0, self.freq)
         self.sdr.setGain(SOAPY_SDR_TX, 0, self.gain_tx) 
+        #self.sdr.setGain(SOAPY_SDR_TX, 0, "AMP", 0) 
 
         self.sdr.setSampleRate(SOAPY_SDR_RX, 0, self.sample_rate)
         self.sdr.setFrequency(SOAPY_SDR_RX, 0, self.freq)
-        self.sdr.setGain(SOAPY_SDR_RX, 0, self.gain_rx) 
+        self.sdr.setGain(SOAPY_SDR_RX, 0, self.gain_rx)
+        #self.sdr.setGain(SOAPY_SDR_RX, 0, "AMP", 0)  
         #set to transmitting or receiving
         self.transmitting_stream = self.sdr.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CF32)
         self.receiving_stream = self.sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)

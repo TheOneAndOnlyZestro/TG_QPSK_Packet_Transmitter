@@ -20,7 +20,7 @@ _tx_queue = queue.Queue()
 rs = reedsolo.RSCodec(32)
 def _sdr_worker():
     print("[HARDWARE] Booting HackRF Transmitter...")
-    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, 40, 30)
+    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, 70, 70)
     padding = np.zeros(int(SAMP_RATE * 0.5), dtype=np.complex64)
     print("[HARDWARE] HackRF is live. Waiting for data from API...")
     

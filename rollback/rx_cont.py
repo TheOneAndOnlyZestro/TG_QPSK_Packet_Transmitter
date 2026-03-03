@@ -75,7 +75,7 @@ def main():
 
     sdr.setSampleRate(SOAPY_SDR_RX, 0, SAMP_RATE)
     sdr.setFrequency(SOAPY_SDR_RX, 0, FREQ)
-    sdr.setGain(SOAPY_SDR_RX, 0, 30)
+    sdr.setGain(SOAPY_SDR_RX, 0, 10)
 
     rx_stream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)
     sdr.activateStream(rx_stream)

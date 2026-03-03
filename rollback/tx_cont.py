@@ -28,7 +28,7 @@ def main():
     sdr = SoapySDR.Device(dict(driver="hackrf", serial=TX_SERIAL))
     sdr.setSampleRate(SOAPY_SDR_TX, 0, SAMP_RATE)
     sdr.setFrequency(SOAPY_SDR_TX, 0, FREQ)
-    sdr.setGain(SOAPY_SDR_TX, 0, 60) # Keep relatively low
+    sdr.setGain(SOAPY_SDR_TX, 0, 30) # Keep relatively low
 
     tx_stream = sdr.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CF32)
     sdr.activateStream(tx_stream)
