@@ -190,7 +190,7 @@ def process_burst(iq_data):
         # Measure the phase DIFFERENCE between the current symbol and the previous one
         diff_phases = np.angle(syms[1:] * np.conj(syms[:-1]))
         
-        # Map phase angles back into bit pairs
+        # Map phase angles back into bit pairsd
         bit_list =[]
         for dp in diff_phases:
             if -np.pi/4 <= dp < np.pi/4:          # ~0 deg
