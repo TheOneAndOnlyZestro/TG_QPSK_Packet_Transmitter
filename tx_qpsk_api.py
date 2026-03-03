@@ -6,7 +6,7 @@ import queue
 import math
 import json
 import uuid 
-
+import reedsolo
 # --- CONFIGURATION ---
 TX_SERIAL = "0000000000000000f77c60dc29417dc3"
 FREQ = 1.2e9
@@ -16,15 +16,26 @@ CHUNK_SIZE = 512
 # The decoupled queue used to receive data from the API
 _tx_queue = queue.Queue()
 
-def _text_to_dqpsk(text):
-    # Frame the payload for the physical receiver
-    framed_text = "[START]" + text + "[END]"
-    print(f"[HARDWARE] Modulating payload of length: {len(framed_text)} characters")
+# def add_parity(bits):
+#     ones_count = bits.count('1')
+#     parity_byte = '00000001' if (ones_count % 2) != 0 else '00000000'
+#     return bits + parity_byte
 
-    # Convert to 8-bit binary string
-    bits = ''.join(format(ord(i), '08b') for i in framed_text)
+rs = reedsolo.RSCodec(32)
+
+def _text_to_dqpsk(text):
+    # 1. Encode text to bytes, then apply Reed-Solomon FEC
+    raw_bytes = text.encode('utf-8')
+    fec_payload = list(rs.encode(raw_bytes)) 
     
-    # DQPSK Phase Mapping
+    # 2. Add plaintext headers/footers for simple syncing
+    start_bytes = list(b"[START]")
+    end_bytes = list(b"[END]")
+    full_frame = start_bytes + fec_payload + end_bytes
+    
+    # 3. Convert to 8-bit binary string
+    bits = ''.join(format(b, '08b') for b in full_frame)
+
     phase_shifts = {
         '00': 0.0,
         '01': np.pi / 2,
@@ -67,6 +78,7 @@ def _sdr_worker():
             payload_string = _tx_queue.get()
             
             iq_samples = _text_to_dqpsk(payload_string)
+
             full_burst = np.concatenate((padding, iq_samples, padding))
             mtu = sdr.getStreamMTU(tx_stream)
             

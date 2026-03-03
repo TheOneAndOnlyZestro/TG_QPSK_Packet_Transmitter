@@ -5,6 +5,8 @@ import sys
 import base64
 import json
 import os
+import Levenshtein
+import reedsolo
 # --- CONFIGURATION ---
 RX_SERIAL = "000000000000000075b068dc30792007"
 FREQ = 1.2e9           
@@ -12,6 +14,7 @@ SAMP_RATE = int(2e6)
 SAMPLES_PER_SYMBOL = 100
 CAPTURE_SECONDS = 1.5  
 
+rs = reedsolo.RSCodec(32)
 
 _received_blocks = {}
 # --- 1. Define the Handler Functions ---
@@ -49,6 +52,7 @@ extensions = {
     'jpeg': handle_jpg, # Map both to the same function
     'png': handle_png
 }
+
 def finalize_file(data_dict):
     """Handles dispatching of fully assembled file files"""
     filename = data_dict.get('filename', '')
@@ -60,6 +64,9 @@ def finalize_file(data_dict):
             print(f"[WARNING] No handler found for extension: .{ext}")
     else:
         print("[ERROR] File assembled but filename is missing or invalid.")
+
+
+
 def process_json(extracted):
     print(f"RAW DATA: {extracted}")
     try:
@@ -116,6 +123,23 @@ def process_json(extracted):
 
     except json.JSONDecodeError:
         print("[ERROR] Failed to parse JSON. Radio interference likely corrupted the packet.")
+
+def check_parity(bit_string):
+    end_bits_len = len("[END]") * 8
+    
+    incoming_parity_str = bit_string[-end_bits_len - 8 : -end_bits_len]
+    
+    payload_to_check = bit_string[0 : -end_bits_len - 8]
+    
+    if len(incoming_parity_str) != 8:
+        return False
+        
+    incoming_parity_val = int(incoming_parity_str, 2)
+    
+    actual_ones = payload_to_check.count('1')
+    expected_parity = actual_ones % 2
+    
+    return expected_parity == incoming_parity_val
 
 def process_burst(iq_data):
     # 1. Packet Detection (Find the burst using Amplitude Envelope)
@@ -183,19 +207,35 @@ def process_burst(iq_data):
         # Search for preamble
         idx = bit_str.find(start_bits)
         if idx != -1:
-             payload_bits = bit_str[idx:]
+             # Skip the [START] string bits automatically
+             payload_bits = bit_str[idx + len(start_bits):]
              
-             # Reconstruct Bytes
-             chars =[]
+             # Reconstruct raw byte array
+             byte_array = bytearray()
              for i in range(0, len(payload_bits)-7, 8):
                  byte = payload_bits[i:i+8]
-                 chars.append(chr(int(byte, 2)))
+                 byte_array.append(int(byte, 2))
                  
-             full_text = "".join(chars)
-             
-             if "[END]" in full_text:
-                 extracted = full_text.split("[START]")[1].split("[END]")[0]
-                 return extracted
+             # Find the [END] tag in the raw bytes
+             end_idx = byte_array.find(b"[END]")
+             if end_idx != -1:
+                 # Extract everything between START and END
+                 fec_payload = byte_array[:end_idx]
+                 
+                 # --- Apply Forward Error Correction ---
+                 try:
+                     # RS decode returns a tuple: (decoded_data, decoded_ecc, erasures)
+                     # We only care about the repaired data at index [0]
+                     repaired_bytes = rs.decode(fec_payload)[0]
+                     
+                     extracted_text = repaired_bytes.decode('utf-8')
+                     print("[SUCCESS] FEC passed. Packet repaired and approved.")
+                     return extracted_text
+                     
+                 except reedsolo.ReedSolomonError:
+                     # This triggers if the errors exceed the 16-byte maximum threshold
+                     print("[FEC ERROR] Corrupted block dropped: RF interference exceeded correction limits.")
+                     return None
              else:
                  return None
 
