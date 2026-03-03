@@ -1,5 +1,4 @@
-import SoapySDR
-from SoapySDR import SOAPY_SDR_RX, SOAPY_SDR_CF32
+from device_control import DeviceControl
 import numpy as np
 import sys
 import base64
@@ -9,6 +8,7 @@ import Levenshtein
 import reedsolo
 # --- CONFIGURATION ---
 RX_SERIAL = "000000000000000075b068dc30792007"
+#RX_SERIAL = "0000000000000000f75461dc371251c3"
 FREQ = 1.2e9           
 SAMP_RATE = int(2e6)   
 SAMPLES_PER_SYMBOL = 100
@@ -244,21 +244,14 @@ def process_burst(iq_data):
 def main():
     print(f"[INFO] Opening HackRF One RX: {RX_SERIAL}...")
     try:
-        sdr = SoapySDR.Device(dict(driver="hackrf", serial=RX_SERIAL))
+        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, 60, 40)
     except Exception as e:
         print(f"Failed to connect: {e}")
         sys.exit(1)
 
-    sdr.setSampleRate(SOAPY_SDR_RX, 0, SAMP_RATE)
-    sdr.setFrequency(SOAPY_SDR_RX, 0, FREQ)
-    sdr.setGain(SOAPY_SDR_RX, 0, 40) # Gain bumped slightly for Phase
-
-    rx_stream = sdr.setupStream(SOAPY_SDR_RX, SOAPY_SDR_CF32)
-    sdr.activateStream(rx_stream)
-
     total_samples = int(SAMP_RATE * CAPTURE_SECONDS)
     buffer = np.zeros(total_samples, dtype=np.complex64)
-    mtu = sdr.getStreamMTU(rx_stream)
+    mtu = device.getMTU()
     temp_buf = np.zeros(mtu, dtype=np.complex64)
     
     print(f"\n[START] Listening continuously for QPSK on {FREQ / 1e9} GHz...")
@@ -268,7 +261,7 @@ def main():
         while True:
             samples_read = 0
             while samples_read < total_samples:
-                sr = sdr.readStream(rx_stream,[temp_buf], mtu)
+                sr = device.read(temp_buf, mtu)
                 if sr.ret > 0:
                     end_idx = min(samples_read + sr.ret, total_samples)
                     read_len = end_idx - samples_read
@@ -283,8 +276,7 @@ def main():
         print("\n[INFO] User interrupted. Stopping receiver...")
         
     finally:
-        sdr.deactivateStream(rx_stream)
-        sdr.closeStream(rx_stream)
+        device.close()
         print("[INFO] Capture closed safely.")
     
 if __name__ == '__main__':

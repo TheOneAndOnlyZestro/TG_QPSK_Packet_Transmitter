@@ -1,5 +1,4 @@
-import SoapySDR
-from SoapySDR import SOAPY_SDR_TX, SOAPY_SDR_CF32
+from device_control import DeviceControl
 import numpy as np
 import threading
 import queue
@@ -61,14 +60,7 @@ def _text_to_dqpsk(text):
 
 def _sdr_worker():
     print("[HARDWARE] Booting HackRF Transmitter...")
-    sdr = SoapySDR.Device(dict(driver="hackrf", serial=TX_SERIAL))
-    sdr.setSampleRate(SOAPY_SDR_TX, 0, SAMP_RATE)
-    sdr.setFrequency(SOAPY_SDR_TX, 0, FREQ)
-    sdr.setGain(SOAPY_SDR_TX, 0, 60) 
-
-    tx_stream = sdr.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CF32)
-    sdr.activateStream(tx_stream)
-    
+    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, 60, 40)
     padding = np.zeros(int(SAMP_RATE * 0.5), dtype=np.complex64)
     print("[HARDWARE] HackRF is live. Waiting for data from API...")
     
@@ -80,11 +72,11 @@ def _sdr_worker():
             iq_samples = _text_to_dqpsk(payload_string)
 
             full_burst = np.concatenate((padding, iq_samples, padding))
-            mtu = sdr.getStreamMTU(tx_stream)
+            mtu = device.getMTU()
             
             for i in range(0, len(full_burst), mtu):
                 chunk = full_burst[i:i+mtu]
-                sdr.writeStream(tx_stream,[chunk], len(chunk))
+                device.write(chunk, len(chunk))
                 
             print(f"[HARDWARE] DQPSK Burst sent. ({len(iq_samples)} baseband samples)")
             _tx_queue.task_done()
@@ -93,8 +85,7 @@ def _sdr_worker():
         print(f"[HARDWARE] Error: {e}")
     finally:
         print("[HARDWARE] Shutting down SDR...")
-        sdr.deactivateStream(tx_stream)
-        sdr.closeStream(tx_stream)
+        device.close()
 
 
 # ==========================================
