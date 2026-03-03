@@ -1,4 +1,5 @@
 from device_control import DeviceControl
+from transmit import transmit
 import numpy as np
 import threading
 import queue
@@ -7,7 +8,8 @@ import json
 import uuid 
 import reedsolo
 # --- CONFIGURATION ---
-TX_SERIAL = "0000000000000000f77c60dc29417dc3"
+#TX_SERIAL = "0000000000000000f77c60dc29417dc3"
+TX_SERIAL = "000000000000000075b068dc30792007"
 FREQ = 1.2e9
 SAMP_RATE = int(2e6)
 SAMPLES_PER_SYMBOL = 100 
@@ -15,52 +17,10 @@ CHUNK_SIZE = 512
 # The decoupled queue used to receive data from the API
 _tx_queue = queue.Queue()
 
-# def add_parity(bits):
-#     ones_count = bits.count('1')
-#     parity_byte = '00000001' if (ones_count % 2) != 0 else '00000000'
-#     return bits + parity_byte
-
 rs = reedsolo.RSCodec(32)
-
-def _text_to_dqpsk(text):
-    # 1. Encode text to bytes, then apply Reed-Solomon FEC
-    raw_bytes = text.encode('utf-8')
-    fec_payload = list(rs.encode(raw_bytes)) 
-    
-    # 2. Add plaintext headers/footers for simple syncing
-    start_bytes = list(b"[START]")
-    end_bytes = list(b"[END]")
-    full_frame = start_bytes + fec_payload + end_bytes
-    
-    # 3. Convert to 8-bit binary string
-    bits = ''.join(format(b, '08b') for b in full_frame)
-
-    phase_shifts = {
-        '00': 0.0,
-        '01': np.pi / 2,
-        '11': np.pi,
-        '10': -np.pi / 2
-    }
-    
-    current_phase = 0.0
-    iq_symbols =[]
-    
-    # Add a starting dummy symbol
-    iq_symbols.append(np.exp(1j * current_phase) * 0.7) 
-    
-    # Map bits to phase changes, two at a time
-    for i in range(0, len(bits), 2):
-        bit_pair = bits[i:i+2]
-        current_phase += phase_shifts[bit_pair]
-        iq_symbols.append(np.exp(1j * current_phase) * 0.7)
-        
-    iq_symbols = np.array(iq_symbols, dtype=np.complex64)
-    iq_data = np.repeat(iq_symbols, SAMPLES_PER_SYMBOL)
-    return iq_data
-
 def _sdr_worker():
     print("[HARDWARE] Booting HackRF Transmitter...")
-    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, 60, 40)
+    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, 40, 30)
     padding = np.zeros(int(SAMP_RATE * 0.5), dtype=np.complex64)
     print("[HARDWARE] HackRF is live. Waiting for data from API...")
     
@@ -68,17 +28,7 @@ def _sdr_worker():
         while True:
             # Block and wait until the API drops a payload into the queue
             payload_string = _tx_queue.get()
-            
-            iq_samples = _text_to_dqpsk(payload_string)
-
-            full_burst = np.concatenate((padding, iq_samples, padding))
-            mtu = device.getMTU()
-            
-            for i in range(0, len(full_burst), mtu):
-                chunk = full_burst[i:i+mtu]
-                device.write(chunk, len(chunk))
-                
-            print(f"[HARDWARE] DQPSK Burst sent. ({len(iq_samples)} baseband samples)")
+            transmit(payload_string, device, padding, rs, SAMPLES_PER_SYMBOL)
             _tx_queue.task_done()
             
     except Exception as e:
@@ -86,11 +36,6 @@ def _sdr_worker():
     finally:
         print("[HARDWARE] Shutting down SDR...")
         device.close()
-
-
-# ==========================================
-# PUBLIC API EXPOSED TO FASTAPI
-# ==========================================
 
 def start_transmitter():
     """Initializes the SDR and starts the hardware worker loop in a background thread."""

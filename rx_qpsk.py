@@ -1,14 +1,15 @@
 from device_control import DeviceControl
+from data_handling import extensions
 import numpy as np
 import sys
-import base64
+
 import json
 import os
 import Levenshtein
 import reedsolo
-# --- CONFIGURATION ---
-RX_SERIAL = "000000000000000075b068dc30792007"
-#RX_SERIAL = "0000000000000000f75461dc371251c3"
+
+#RX_SERIAL = "000000000000000075b068dc30792007"
+RX_SERIAL = "0000000000000000f77c60dc29417dc3"
 FREQ = 1.2e9           
 SAMP_RATE = int(2e6)   
 SAMPLES_PER_SYMBOL = 100
@@ -17,41 +18,6 @@ CAPTURE_SECONDS = 1.5
 rs = reedsolo.RSCodec(32)
 
 _received_blocks = {}
-# --- 1. Define the Handler Functions ---
-
-def handle_jpg(data):
-    filename = data.get('filename', 'received_image') + 'mina.jpg'
-    payload = data.get('payload', '')
-    
-    try:
-        # Decode the Base64 string back into binary bytes
-        img_bytes = base64.b64decode(payload)
-        with open(filename, 'wb') as f:
-            f.write(img_bytes)
-        print(f"[SUCCESS] JPG image saved as: {filename}")
-    except Exception as e:
-        print(f"[ERROR] Failed to save JPG: {e}")
-
-def handle_png(data):
-    filename = data.get('filename', 'received_image.png')
-    payload = data.get('payload', '')
-    
-    try:
-        img_bytes = base64.b64decode(payload)
-        with open(filename, 'wb') as f:
-            f.write(img_bytes)
-        print(f"[SUCCESS] PNG image saved as: {filename}")
-    except Exception as e:
-        print(f"[ERROR] Failed to save PNG: {e}")
-
-# --- 2. Create the Extensions Dictionary ---
-
-# This maps the file extension string to the function name
-extensions = {
-    'jpg': handle_jpg,
-    'jpeg': handle_jpg, # Map both to the same function
-    'png': handle_png
-}
 
 def finalize_file(data_dict):
     """Handles dispatching of fully assembled file files"""
@@ -227,7 +193,7 @@ def process_burst(iq_data):
                      # RS decode returns a tuple: (decoded_data, decoded_ecc, erasures)
                      # We only care about the repaired data at index [0]
                      repaired_bytes = rs.decode(fec_payload)[0]
-                     
+                     #print(f"THE UNREPAIRED BYTES: {fec_payload}")
                      extracted_text = repaired_bytes.decode('utf-8')
                      print("[SUCCESS] FEC passed. Packet repaired and approved.")
                      return extracted_text
@@ -244,7 +210,7 @@ def process_burst(iq_data):
 def main():
     print(f"[INFO] Opening HackRF One RX: {RX_SERIAL}...")
     try:
-        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, 60, 40)
+        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, 60,40)
     except Exception as e:
         print(f"Failed to connect: {e}")
         sys.exit(1)
