@@ -24,7 +24,7 @@ def _sdr_worker():
     global _global_seq_count
     print("[HARDWARE] Booting HackRF Transmitter...")
     device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, TX_GAIN, RX_GAIN)
-    padding = np.zeros(int(SAMP_RATE * 0.5), dtype=np.complex64)
+    padding = np.zeros(int(SAMP_RATE * 0.25), dtype=np.complex64)
     print("[HARDWARE] HackRF is live. Waiting for data from API...")
     
     total_samples = int(SAMP_RATE * CAPTURE_SECONDS)
@@ -46,7 +46,9 @@ def _sdr_worker():
             # Stop-and-Wait ARQ Loop
             for attempt in range(int(MAX_RESEND)):
                 print(f"[ARQ] Transmitting Seq {_global_seq_count} (Attempt {attempt + 1}/{MAX_RESEND})")
-                transmit(final_payload_string, device, padding, rs, SAMPLES_PER_SYMBOL)
+                
+                for _ in range(10):
+                    transmit(final_payload_string, device, padding, rs, SAMPLES_PER_SYMBOL)
                 
                 # Listen for the ACK over the FULL TIMEOUT window
                 listen_start = time.time()

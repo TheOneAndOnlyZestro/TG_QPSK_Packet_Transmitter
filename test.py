@@ -26,7 +26,7 @@ def run_test():
     num_samples = 1024 * 16
     t = np.arange(num_samples) / SAMP_RATE
     # Generating e^(j * 2 * pi * f * t)
-    tx_buffer = np.exp(1j * 2 * np.pi * TONE_FREQ * t).astype(np.complex64)
+    tx_buffer = np.exp(1j * 2 * np.pi * TONE_FREQ * t).astype(np.complex64) * 0.0
     # Scale to 0.8 to prevent digital clipping
     tx_buffer *= 0.8
 
