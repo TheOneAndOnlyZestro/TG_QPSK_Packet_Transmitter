@@ -1,7 +1,8 @@
 from device_control import DeviceControl
 import numpy as np
 import reedsolo
-
+import time
+from config_loader import TIMEOUT, MAX_RESEND
 def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec):
     # 1. Packet Detection (Find the burst using Amplitude Envelope)
     mag = np.abs(iq_data)
@@ -9,7 +10,7 @@ def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCode
     smoothed = np.convolve(mag, np.ones(window_size)/window_size, mode='same')
     
     max_val = np.max(smoothed)
-    print(f"MAX VAL: {max_val}")
+    #print(f"MAX VAL: {max_val}")
     if max_val < 0.1:  # Absolute noise floor threshold
         return None
 
@@ -103,15 +104,35 @@ def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCode
 
     return None
 
-def receive(buff: np.ndarray, temp_buff: np.ndarray, device: DeviceControl,baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec):
+def receive(buff: np.ndarray, temp_buff: np.ndarray, device: DeviceControl, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec, timeout: float = TIMEOUT):
     samples_read = 0
+    start_time = time.time()
+    
+    # 1. Read until buffer is full OR timeout expires
     while samples_read < len(buff):
+        elapsed = time.time() - start_time
+        if elapsed >= timeout:
+            break
+            
         sr = device.read(temp_buff, len(temp_buff))
+        
         if sr.ret > 0:
             end_idx = min(samples_read + sr.ret, len(buff))
             read_len = end_idx - samples_read
             buff[samples_read:end_idx] = temp_buff[:read_len]
             samples_read += read_len
+        elif sr.ret == 0:
+            # 2. Prevent CPU lockup if SoapySDR has no samples ready
+            time.sleep(0.001) 
+        else:
+            # Handle SDR read errors gracefully (negative return codes)
+            pass
 
-    return process_burst(buff, baud_rate, sample_rate, rs)
+    elapsed = time.time() - start_time
+
+    # 3. ONLY process the portion of the buffer that was actually filled
+    if samples_read > baud_rate * 10:
+        valid_buff = buff[:samples_read]
+        result = process_burst(valid_buff, baud_rate, sample_rate, rs)
+        return result, elapsed
     

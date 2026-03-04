@@ -1,23 +1,35 @@
 from device_control import DeviceControl
 from json_parser import process_json
+from transmit import transmit
+from receive import receive
 import numpy as np
 import sys
-from receive import receive
-
 import os
-import Levenshtein
+import json
+import time
 import reedsolo
 
-from config_loader import RX_SERIAL, SAMP_RATE, FREQ, CAPTURE_SECONDS, SAMPLES_PER_SYMBOL, TX_GAIN, RX_GAIN
+from config_loader import RX_SERIAL, SAMP_RATE, FREQ, CAPTURE_SECONDS, SAMPLES_PER_SYMBOL, TX_GAIN, RX_GAIN, TIMEOUT
 
 rs = reedsolo.RSCodec(32)
 
-_received_blocks = {}
+def send_ack(device, seq_count, padding):
+    # CRITICAL: Wait for Transmitter to switch its HackRF to RX mode (Turnaround time)
+    time.sleep(0.05) 
+    
+    ack_dict = {
+        "type": "ack",
+        "ack_seq": seq_count
+    }
+    ack_string = json.dumps(ack_dict)
+    print(f"[ARQ] Transmitting ACK for Seq {seq_count}...")
+    for _ in range(3):
+        transmit(ack_string, device, padding, rs, SAMPLES_PER_SYMBOL)
 
 def main():
     print(f"[INFO] Opening HackRF One RX: {RX_SERIAL}...")
     try:
-        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, TX_GAIN,RX_GAIN)
+        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, TX_GAIN, RX_GAIN)
     except Exception as e:
         print(f"Failed to connect: {e}")
         sys.exit(1)
@@ -26,16 +38,33 @@ def main():
     buffer = np.zeros(total_samples, dtype=np.complex64)
     mtu = device.getMTU()
     temp_buf = np.zeros(mtu, dtype=np.complex64)
+    padding = np.zeros(int(SAMP_RATE * 0.5), dtype=np.complex64)
+    
+    last_seq_count = -1 
     
     print(f"\n[START] Listening continuously for QPSK on {FREQ / 1e9} GHz...")
-    print("Waiting for data... (Press Ctrl+C to stop)\n")
 
     try:
         while True:
-            result = receive(buffer, temp_buf, device,SAMPLES_PER_SYMBOL,SAMP_RATE,rs)
-            if result:
-                process_json(result)
+            # We use TIMEOUT here to allow safe KeyboardInterrupt catching
+            result_string, _ = receive(buffer, temp_buf, device, SAMPLES_PER_SYMBOL, SAMP_RATE, rs, timeout=TIMEOUT)
+            
+            if result_string:
+                success, data_dict = process_json(result_string)
+                
+                if success:
+                    current_seq = data_dict.get("seq_count")
                     
+                    # If this packet requires an ACK (has a seq_count)
+                    if current_seq is not None:
+                        # Prevent saving a file chunk twice if our previous ACK dropped
+                        if current_seq == last_seq_count:
+                            print(f"[ARQ] Duplicate packet detected (Seq {current_seq}). Resending ACK.")
+                            send_ack(device, current_seq, padding)
+                        else:
+                            last_seq_count = current_seq
+                            send_ack(device, current_seq, padding)
+
     except KeyboardInterrupt:
         print("\n[INFO] User interrupted. Stopping receiver...")
         
