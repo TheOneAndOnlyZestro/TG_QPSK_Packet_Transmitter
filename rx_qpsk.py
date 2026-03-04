@@ -8,12 +8,7 @@ import os
 import Levenshtein
 import reedsolo
 
-#RX_SERIAL = "000000000000000075b068dc30792007"
-RX_SERIAL = "0000000000000000f77c60dc29417dc3"
-FREQ = 1.2e9           
-SAMP_RATE = int(2e6)   
-SAMPLES_PER_SYMBOL = 100
-CAPTURE_SECONDS = 1.5  
+from config_loader import RX_SERIAL, SAMP_RATE, FREQ, CAPTURE_SECONDS, SAMPLES_PER_SYMBOL, TX_GAIN, RX_GAIN
 
 rs = reedsolo.RSCodec(32)
 
@@ -22,7 +17,7 @@ _received_blocks = {}
 def main():
     print(f"[INFO] Opening HackRF One RX: {RX_SERIAL}...")
     try:
-        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, 70,70)
+        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, TX_GAIN,RX_GAIN)
     except Exception as e:
         print(f"Failed to connect: {e}")
         sys.exit(1)

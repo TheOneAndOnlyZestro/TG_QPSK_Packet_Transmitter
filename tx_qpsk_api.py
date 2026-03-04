@@ -7,20 +7,14 @@ import math
 import json
 import uuid 
 import reedsolo
-# --- CONFIGURATION ---
-#TX_SERIAL = "0000000000000000f77c60dc29417dc3"
-TX_SERIAL = "000000000000000075b068dc30792007"
-FREQ = 1.2e9
-SAMP_RATE = int(2e6)
-SAMPLES_PER_SYMBOL = 100 
-CHUNK_SIZE = 512  
-# The decoupled queue used to receive data from the API
+
+from config_loader import TX_SERIAL, SAMP_RATE, FREQ, SAMPLES_PER_SYMBOL, CHUNK_SIZE, TX_GAIN, RX_GAIN
 _tx_queue = queue.Queue()
 
 rs = reedsolo.RSCodec(32)
 def _sdr_worker():
     print("[HARDWARE] Booting HackRF Transmitter...")
-    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, 70, 70)
+    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, TX_GAIN, RX_GAIN)
     padding = np.zeros(int(SAMP_RATE * 0.5), dtype=np.complex64)
     print("[HARDWARE] HackRF is live. Waiting for data from API...")
     
@@ -29,6 +23,11 @@ def _sdr_worker():
             # Block and wait until the API drops a payload into the queue
             payload_string = _tx_queue.get()
             transmit(payload_string, device, padding, rs, SAMPLES_PER_SYMBOL)
+
+            # WAIT for an ACK from receiving side
+
+            #TODO change this to a receiving end, wait for an ack or nack, if ack proceed with next else transmit again (nack or timeout)
+
             _tx_queue.task_done()
             
     except Exception as e:
