@@ -5,15 +5,23 @@ import time
 from config_loader import TIMEOUT, MAX_RESEND
 def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec):
     # 1. Packet Detection (Find the burst using Amplitude Envelope)
+    iq_data = iq_data - np.mean(iq_data)
+
     mag = np.abs(iq_data)
     window_size = baud_rate * 2
     smoothed = np.convolve(mag, np.ones(window_size)/window_size, mode='same')
     
     max_val = np.max(smoothed)
     #print(f"MAX VAL: {max_val}")
-    if max_val < 0.1:  # Absolute noise floor threshold
-        return None
+    # if max_val < 0.1:  # Absolute noise floor threshold
+    #     return None
 
+    noise_floor = np.median(smoothed)
+    
+    # If the peak is not at least 3x louder than the background noise, ignore it.
+    if max_val < (noise_floor * 3.0): 
+        return None
+    
     # Dynamic threshold: The QPSK signal will be a solid "block" of amplitude
     threshold = max_val * 0.5
     active_indices = np.where(smoothed > threshold)[0]

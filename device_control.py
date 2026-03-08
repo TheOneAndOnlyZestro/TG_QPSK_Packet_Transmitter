@@ -14,12 +14,20 @@ class DeviceControl:
         self.sdr = SoapySDR.Device(dict(driver="hackrf", serial=self.device_serial))
         self.sdr.setSampleRate(SOAPY_SDR_TX, 0, self.sample_rate)
         self.sdr.setFrequency(SOAPY_SDR_TX, 0, self.freq)
-        self.sdr.setGain(SOAPY_SDR_TX, 0, self.gain_tx) 
+        #self.sdr.setGain(SOAPY_SDR_TX, 0, self.gain_tx) 
         #self.sdr.setGain(SOAPY_SDR_TX, 0, "AMP", 0) 
+        self.sdr.setGain(SOAPY_SDR_TX, 0, "VGA", 47) # Max out the TX Baseband
+        self.sdr.setGain(SOAPY_SDR_TX, 0, "AMP", 14) # Turn ON the TX RF Amp (Safe OTA)
+
 
         self.sdr.setSampleRate(SOAPY_SDR_RX, 0, self.sample_rate)
         self.sdr.setFrequency(SOAPY_SDR_RX, 0, self.freq)
-        self.sdr.setGain(SOAPY_SDR_RX, 0, self.gain_rx)
+        #self.sdr.setGain(SOAPY_SDR_RX, 0, self.gain_rx)
+
+        self.sdr.setGain(SOAPY_SDR_RX, 0, "LNA", 32) # RF Frontend Gain (0 to 40)
+        self.sdr.setGain(SOAPY_SDR_RX, 0, "VGA", 30) # Baseband Gain (0 to 62)
+        self.sdr.setGain(SOAPY_SDR_RX, 0, "AMP", 0)  # Keep RX RF Amp OFF (Safe)
+
         #self.sdr.setGain(SOAPY_SDR_RX, 0, "AMP", 0)  
         #set to transmitting or receiving
         self.transmitting_stream = self.sdr.setupStream(SOAPY_SDR_TX, SOAPY_SDR_CF32)

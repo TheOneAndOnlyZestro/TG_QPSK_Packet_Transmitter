@@ -29,7 +29,7 @@ def send_ack(device, seq_count, padding):
 def main():
     print(f"[INFO] Opening HackRF One RX: {RX_SERIAL}...")
     try:
-        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ, TX_GAIN, RX_GAIN)
+        device = DeviceControl(RX_SERIAL, False, SAMP_RATE, FREQ - 200000, TX_GAIN, RX_GAIN)
     except Exception as e:
         print(f"Failed to connect: {e}")
         sys.exit(1)

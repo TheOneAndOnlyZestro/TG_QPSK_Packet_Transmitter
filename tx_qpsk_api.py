@@ -11,6 +11,7 @@ import uuid
 import reedsolo
 import time
 import traceback
+from telemetry import Telemtry
 
 from config_loader import TX_SERIAL, SAMP_RATE, FREQ, SAMPLES_PER_SYMBOL, CHUNK_SIZE, TX_GAIN, RX_GAIN, TIMEOUT, CAPTURE_SECONDS, MAX_RESEND
 _tx_queue = queue.Queue()
@@ -23,7 +24,8 @@ _global_seq_count = 0
 def _sdr_worker():
     global _global_seq_count
     print("[HARDWARE] Booting HackRF Transmitter...")
-    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ, TX_GAIN, RX_GAIN)
+    device = DeviceControl(TX_SERIAL, True, SAMP_RATE, FREQ - (200000), TX_GAIN, RX_GAIN)
+    tel = Telemtry()
     padding = np.zeros(int(SAMP_RATE * 0.25), dtype=np.complex64)
     print("[HARDWARE] HackRF is live. Waiting for data from API...")
     
@@ -43,8 +45,10 @@ def _sdr_worker():
             
             ack_received = False
             
+            packet_start_time = time.time()
             # Stop-and-Wait ARQ Loop
             for attempt in range(int(MAX_RESEND)):
+                tel.log_attempt()
                 print(f"[ARQ] Transmitting Seq {_global_seq_count} (Attempt {attempt + 1}/{MAX_RESEND})")
                 
                 for _ in range(10):
@@ -73,7 +77,13 @@ def _sdr_worker():
                     break # Break out of the resend loop
             
             if ack_received:
+                rtt = time.time() - packet_start_time
+                tel.log_success(len(final_payload_string.encode('utf-8')), rtt) 
                 _global_seq_count = (_global_seq_count + 1) % 16384
+
+                if _global_seq_count % 2 == 0:
+                    tel.write_report()
+                
             else:
                 print(f"[ERROR] Max retries reached for Seq {_global_seq_count}. Packet Dropped.")
                 
