@@ -20,10 +20,9 @@ def modulate_qpsk(bits: str, baud_rate: int):
         iq_symbols.append(np.exp(1j * current_phase) * 0.7)
         
     iq_symbols = np.array(iq_symbols, dtype=np.complex64)
-    iq_data = np.repeat(iq_symbols, baud_rate)
-    return iq_data
+    return np.repeat(iq_symbols, int(baud_rate))
 
-def demodulate_qpsk(complex: np.ndarray, baud_rate: int, sample_rate: int):
+def demodulate_qpsk(complex: np.ndarray, baud_rate: int, sample_rate: int, start_bits: str):
      # 2. Carrier Recovery (Correct HackRF internal clock frequency drift)
     # Raising a QPSK signal to the 4th power removes the phase modulation, 
     # leaving only a massive spike at 4x the frequency offset!
@@ -38,9 +37,6 @@ def demodulate_qpsk(complex: np.ndarray, baud_rate: int, sample_rate: int):
     # Derotate the complex to bring it perfectly back to 0 Hz baseband
     t = np.arange(N) / sample_rate
     derotated_burst = complex * np.exp(-1j * 2 * np.pi * f_offset * t)
-
-    # 3. Symbol Timing & Phase Decoding
-    start_bits = ''.join(format(ord(i), '08b') for i in "[START]")
     
     # Brute force 100 offset phases
     for offset in range(baud_rate):
@@ -68,12 +64,59 @@ def demodulate_qpsk(complex: np.ndarray, baud_rate: int, sample_rate: int):
         # Search for preamble
         idx = bit_str.find(start_bits)
         if idx != -1:
-            pass
+            return bit_str[idx + len(start_bits):]
+        return None
+    
+def demodulate_bpsk(complex: np.ndarray, baud_rate: int, sample_rate: int, start_bits: str):
+    # Carrier Recovery (M=2 for BPSK)
+    N = len(complex)
+    burst_2 = complex**2 
+    fft_res = np.fft.fft(burst_2)
+    fft_freqs = np.fft.fftfreq(N, d=1/sample_rate)
+    
+    f_offset = fft_freqs[np.argmax(np.abs(fft_res))] / 2.0
+    t = np.arange(N) / sample_rate
+    derotated = complex * np.exp(-1j * 2 * np.pi * f_offset * t)
 
-def demodulate_bpsk():
-    pass
+    for offset in range(baud_rate):
+        syms = derotated[offset :: baud_rate]
+        if len(syms) < 2: continue
+            
+        diff_phases = np.angle(syms[1:] * np.conj(syms[:-1]))
+        
+        bit_list =[]
+        for dp in diff_phases:
+            # DBPSK maps -90 to +90 as '0', and outside as '1'
+            if -np.pi/2 <= dp < np.pi/2: bit_list.append('0')
+            else:                        bit_list.append('1')
+                
+        bit_str = "".join(bit_list)
+        idx = bit_str.find(start_bits)
+        if idx != -1:
+             return bit_str[idx + len(start_bits):]
+             
+    return None
 def modulate_bpsk(bits: str, baud_rate: int):
-    pass
+    phase_shifts = {
+        '0':0.0,
+        '1' : np.pi
+    }
+    
+    current_phase = 0.0
+    iq_symbols =[]
+    
+    # Add a starting dummy symbol
+    iq_symbols.append(np.exp(1j * current_phase) * 0.7) 
+    
+    # Map bits to phase changes, two at a time
+    for b in bits:
+        current_phase += phase_shifts[b]
+        iq_symbols.append(np.exp(1j * current_phase) * 0.7)
+        
+    iq_symbols = np.array(iq_symbols, dtype=np.complex64)
+    iq_data = np.repeat(iq_symbols, baud_rate)
+    return iq_data
+
 modulation_methods ={
     'QPSK': (modulate_qpsk, demodulate_qpsk),
     'BPSK' : (modulate_bpsk, demodulate_bpsk)
