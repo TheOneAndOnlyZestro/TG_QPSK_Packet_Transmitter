@@ -250,3 +250,50 @@
 ==================================================
 🚀 NEW SESSION STARTED: 2026-03-08 15:18:01
 ==================================================
+
+
+==================================================
+🚀 NEW SESSION STARTED: 2026-03-08 15:20:23
+==================================================
+
+
+==================================================
+🚀 NEW SESSION STARTED: 2026-03-08 15:23:29
+==================================================
+
+
+==================================================
+🚀 NEW SESSION STARTED: 2026-03-08 15:24:41
+==================================================
+[15:25:43] TELEMETRY REPORT |
+  -> Elapsed Time : 61.71 s
+  -> Total Bytes  : 4434 B
+  -> Goodput      : 574.77 bps (0.57 kbps)
+  -> TX Attempts  : 4
+  -> Packet Drops : 2 (50.0% Drop Rate)
+  -> Average RTT  : 27.31 sec/packet
+--------------------------------------------------
+[15:26:37] TELEMETRY REPORT |
+  -> Elapsed Time : 115.69 s
+  -> Total Bytes  : 8868 B
+  -> Goodput      : 613.22 bps (0.61 kbps)
+  -> TX Attempts  : 8
+  -> Packet Drops : 4 (50.0% Drop Rate)
+  -> Average RTT  : 27.15 sec/packet
+--------------------------------------------------
+[15:27:05] TELEMETRY REPORT |
+  -> Elapsed Time : 144.00 s
+  -> Total Bytes  : 13302 B
+  -> Goodput      : 739.02 bps (0.74 kbps)
+  -> TX Attempts  : 10
+  -> Packet Drops : 4 (40.0% Drop Rate)
+  -> Average RTT  : 22.82 sec/packet
+--------------------------------------------------
+[15:28:02] TELEMETRY REPORT |
+  -> Elapsed Time : 200.24 s
+  -> Total Bytes  : 17700 B
+  -> Goodput      : 707.14 bps (0.71 kbps)
+  -> TX Attempts  : 14
+  -> Packet Drops : 6 (42.9% Drop Rate)
+  -> Average RTT  : 24.14 sec/packet
+--------------------------------------------------

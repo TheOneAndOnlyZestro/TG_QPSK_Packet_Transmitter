@@ -13,7 +13,7 @@ import time
 import traceback
 from telemetry import Telemtry
 
-from config_loader import TX_SERIAL, SAMP_RATE, FREQ, SAMPLES_PER_SYMBOL, CHUNK_SIZE, TX_GAIN, RX_GAIN, TIMEOUT, CAPTURE_SECONDS, MAX_RESEND
+from config_loader import TX_SERIAL, SAMP_RATE, FREQ, SAMPLES_PER_SYMBOL, CHUNK_SIZE, TX_GAIN, RX_GAIN, TIMEOUT, CAPTURE_SECONDS, MAX_RESEND, TRANS_COUNT
 _tx_queue = queue.Queue()
 
 rs = reedsolo.RSCodec(32)
@@ -51,7 +51,7 @@ def _sdr_worker():
                 tel.log_attempt()
                 print(f"[ARQ] Transmitting Seq {_global_seq_count} (Attempt {attempt + 1}/{MAX_RESEND})")
                 
-                for _ in range(10):
+                for _ in range(TRANS_COUNT):
                     transmit(final_payload_string, device, padding, rs, SAMPLES_PER_SYMBOL)
                 
                 # Listen for the ACK over the FULL TIMEOUT window
