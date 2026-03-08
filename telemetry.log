@@ -186,3 +186,37 @@
   -> Packet Drops : 8 (57.1% Drop Rate)
   -> Average RTT  : 22.69 sec/packet
 --------------------------------------------------
+
+
+==================================================
+🚀 NEW SESSION STARTED: 2026-03-08 13:25:16
+==================================================
+
+
+==================================================
+🚀 NEW SESSION STARTED: 2026-03-08 13:57:22
+==================================================
+[13:59:16] TELEMETRY REPORT |
+  -> Elapsed Time : 114.32 s
+  -> Total Bytes  : 2388 B
+  -> Goodput      : 167.11 bps (0.17 kbps)
+  -> TX Attempts  : 7
+  -> Packet Drops : 5 (71.4% Drop Rate)
+  -> Average RTT  : 42.02 sec/packet
+--------------------------------------------------
+[14:00:04] TELEMETRY REPORT |
+  -> Elapsed Time : 162.50 s
+  -> Total Bytes  : 4776 B
+  -> Goodput      : 235.13 bps (0.24 kbps)
+  -> TX Attempts  : 11
+  -> Packet Drops : 7 (63.6% Drop Rate)
+  -> Average RTT  : 33.05 sec/packet
+--------------------------------------------------
+[14:03:39] TELEMETRY REPORT |
+  -> Elapsed Time : 377.13 s
+  -> Total Bytes  : 7164 B
+  -> Goodput      : 151.97 bps (0.15 kbps)
+  -> TX Attempts  : 28
+  -> Packet Drops : 22 (78.6% Drop Rate)
+  -> Average RTT  : 36.26 sec/packet
+--------------------------------------------------
