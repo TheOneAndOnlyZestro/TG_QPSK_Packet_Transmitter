@@ -45,14 +45,21 @@ def main():
     
     print(f"\n[START] Listening continuously for QPSK on {FREQ / 1e9} GHz...")
 
-    fig, ax = plt.subplots()
-    ax.scatter(buffer.real, buffer.imag)
-    ax.set_xlabel('Real')
-    ax.set_ylabel('Imaginary')
+    fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(6,8))
+    ax[0].clear()
+    ax[0].scatter(buffer.real, buffer.imag, s=2, alpha=0.4)   # ← update here
+    ax[0].set_xlabel("In-phase (I)")
+    ax[0].set_ylabel("Quadrature (Q)")
+    ax[0].set_title("Raw Received Signal")
+    ax[0].grid(True)
 
-    ax.set_title('RAW SIGNAL RECEIVED')
-    ax.grid(True)
-    plt.show()
+    ax[1].clear()
+    ax[1].scatter(buffer.real, buffer.imag, s=2, alpha=0.4)   # ← update here
+    ax[1].set_xlabel("In-phase (I)")
+    ax[1].set_ylabel("Quadrature (Q)")
+    ax[1].set_title("Signal After modulation")
+    ax[1].grid(True)
+    plt.show(block=False)
 
     try:
         while True:

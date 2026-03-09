@@ -9,17 +9,7 @@ from matplotlib.animation import FuncAnimation
 from config_loader import TIMEOUT, MAX_RESEND, MODULATION_METHOD
 
 def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec, plot):
-    
-    if plot is not None:
-        fig, ax = plot
-
-        def update():
-            ax.clear()  
-            ax.scatter(iq_data.real,iq_data.imag)  
-            fig.canvas.draw() 
-
-        anim = FuncAnimation(fig, update)
-        plt.show()
+              
     # 1. Packet Detection (Find the burst using Amplitude Envelope)
     iq_data = iq_data - np.mean(iq_data)
 
@@ -49,8 +39,29 @@ def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCode
 
     start_bits = ''.join(format(ord(i), '08b') for i in "[START]")
     _, demod = modulation_methods[MODULATION_METHOD]
-    payload_bits = demod(burst, baud_rate, sample_rate, start_bits)  
+    payload_bits = demod(burst, baud_rate, sample_rate, start_bits, plot)  
 
+
+    if plot is not None:
+        fig, ax = plot     
+        if len(burst) > 80000:
+            sindices = np.random.choice(len(burst), size=60000, replace=False)
+            burst_plot = burst[sindices]
+        else:
+            burst_plot = burst
+
+        ideal = np.array([1+1j, 1-1j, -1+1j, -1-1j]) / np.sqrt(2)
+ 
+        ax[0].clear()
+        ax[0].scatter(burst_plot.real, burst_plot.imag, s=2, alpha=0.5, color='blue', edgecolors='none')
+        ax[0].set_xlabel("In-phase (I)")
+        ax[0].set_ylabel("Quadrature (Q)")
+        ax[0].set_title("Signal Before Modulation")
+        ax[0].grid(True)
+        ax[0].scatter(ideal.real, ideal.imag, s=100, marker='x', color='red', label='Ideal')
+        fig.canvas.draw()
+        fig.canvas.flush_events() 
+        
     if payload_bits:
         byte_array = bytearray()
         for i in range(0, len(payload_bits)-7, 8):
