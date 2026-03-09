@@ -3,8 +3,23 @@ import numpy as np
 import reedsolo
 import time
 from modulation import modulation_methods
+import matplotlib
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 from config_loader import TIMEOUT, MAX_RESEND, MODULATION_METHOD
-def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec):
+
+def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec, plot):
+    
+    if plot is not None:
+        fig, ax = plot
+
+        def update():
+            ax.clear()  
+            ax.scatter(iq_data.real,iq_data.imag)  
+            fig.canvas.draw() 
+
+        anim = FuncAnimation(fig, update)
+        plt.show()
     # 1. Packet Detection (Find the burst using Amplitude Envelope)
     iq_data = iq_data - np.mean(iq_data)
 
@@ -21,9 +36,12 @@ def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCode
     threshold = max_val * 0.5
     active_indices = np.where(smoothed > threshold)[0]
     
-    if len(active_indices) < baud_rate * 10:
-        return None # Too short, just a noise pop
+    # if len(active_indices) < baud_rate * 10:
+    #     return None # Too short, just a noise pop
 
+    if len(active_indices) < 100:  
+        return None # Too short, just a noise pop
+    
     # Snip out the burst, giving it a tiny buffer on the edges
     start_idx = max(0, active_indices[0] - baud_rate)
     end_idx = min(len(iq_data), active_indices[-1] + baud_rate)
@@ -53,7 +71,7 @@ def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCode
 
     return None
 
-def receive(buff: np.ndarray, temp_buff: np.ndarray, device: DeviceControl, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec, timeout: float = TIMEOUT):
+def receive(buff: np.ndarray, temp_buff: np.ndarray, device: DeviceControl, baud_rate: int, sample_rate: int, rs: reedsolo.RSCodec, timeout: float, plot = None):
     samples_read = 0
     start_time = time.time()
     
@@ -82,6 +100,6 @@ def receive(buff: np.ndarray, temp_buff: np.ndarray, device: DeviceControl, baud
     # 3. ONLY process the portion of the buffer that was actually filled
     if samples_read > baud_rate * 10:
         valid_buff = buff[:samples_read]
-        result = process_burst(valid_buff, baud_rate, sample_rate, rs)
+        result = process_burst(valid_buff, baud_rate, sample_rate, rs, plot)
         return result, elapsed
     

@@ -59,7 +59,7 @@ def _sdr_worker():
                 while (time.time() - listen_start) < TIMEOUT:
                     time_left = TIMEOUT - (time.time() - listen_start)
                     print(f"[TIME] {time_left}")
-                    ack_raw, _ = receive(buffer, temp_buf, device, SAMPLES_PER_SYMBOL, SAMP_RATE, rs, timeout=time_left)
+                    ack_raw, _ = receive(buffer, temp_buf, device, SAMPLES_PER_SYMBOL, SAMP_RATE, rs, time_left)
                     
                     if ack_raw:
                         print(f"[ACK_RAW] {ack_raw}")

@@ -8,7 +8,8 @@ import os
 import json
 import time
 import reedsolo
-
+import matplotlib
+import matplotlib.pyplot as plt
 from config_loader import RX_SERIAL, SAMP_RATE, FREQ, CAPTURE_SECONDS, SAMPLES_PER_SYMBOL, TX_GAIN, RX_GAIN, TIMEOUT
 
 rs = reedsolo.RSCodec(32)
@@ -23,7 +24,7 @@ def send_ack(device, seq_count, padding):
     }
     ack_string = json.dumps(ack_dict)
     print(f"[ARQ] Transmitting ACK for Seq {seq_count}...")
-    for _ in range(3):
+    for _ in range(4):
         transmit(ack_string, device, padding, rs, SAMPLES_PER_SYMBOL)
 
 def main():
@@ -44,10 +45,19 @@ def main():
     
     print(f"\n[START] Listening continuously for QPSK on {FREQ / 1e9} GHz...")
 
+    fig, ax = plt.subplots()
+    ax.scatter(buffer.real, buffer.imag)
+    ax.set_xlabel('Real')
+    ax.set_ylabel('Imaginary')
+
+    ax.set_title('RAW SIGNAL RECEIVED')
+    ax.grid(True)
+    plt.show()
+
     try:
         while True:
             # We use TIMEOUT here to allow safe KeyboardInterrupt catching
-            result_string, _ = receive(buffer, temp_buf, device, SAMPLES_PER_SYMBOL, SAMP_RATE, rs, timeout=TIMEOUT)
+            result_string, _ = receive(buffer, temp_buf, device, SAMPLES_PER_SYMBOL, SAMP_RATE, rs, TIMEOUT, (fig,ax))
             
             if result_string:
                 success, data_dict = process_json(result_string)
