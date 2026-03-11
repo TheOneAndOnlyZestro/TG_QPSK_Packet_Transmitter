@@ -68,6 +68,7 @@ def process_burst(iq_data, baud_rate: int, sample_rate: int, rs: reedsolo.RSCode
             byte = payload_bits[i:i+8]
             byte_array.append(int(byte, 2))
             
+        print(f"[Payload before rs] {byte_array}")
         end_idx = byte_array.find(b"[END]")
         if end_idx != -1:
             fec_payload = byte_array[:end_idx]

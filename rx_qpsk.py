@@ -10,7 +10,7 @@ import time
 import reedsolo
 import matplotlib
 import matplotlib.pyplot as plt
-from config_loader import RX_SERIAL, SAMP_RATE, FREQ, CAPTURE_SECONDS, SAMPLES_PER_SYMBOL, TX_GAIN, RX_GAIN, TIMEOUT
+from config_loader import RX_SERIAL, SAMP_RATE, FREQ, CAPTURE_SECONDS, SAMPLES_PER_SYMBOL, TX_GAIN, RX_GAIN, TIMEOUT, MODULATION_METHOD
 
 rs = reedsolo.RSCodec(32)
 
